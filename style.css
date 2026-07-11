@@ -1,0 +1,37 @@
+/* Overlay folder button - appended as a trailing child of gif tiles (picker)
+   and media wrappers (chat). Size/position is synced to Discord's favorite
+   star at runtime; these values are fallbacks matching its usual placement
+   (top-left corner, so we sit directly to its right). */
+.vc-gifo-overlay-btn {
+    position: absolute;
+    top: 8px;
+    left: 50px;
+    z-index: 10;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    box-sizing: border-box;
+    width: 34px;
+    height: 34px;
+    border-radius: 8px;
+    background: rgb(0 0 0 / 72%);
+    color: #fff;
+    opacity: 0;
+    cursor: pointer;
+    transition: opacity 0.12s ease, background 0.12s ease;
+}
+
+.vc-gifo-overlay-btn svg {
+    width: 18px;
+    height: 18px;
+}
+
+/* reveal when the media / tile (our button's parent) is hovered */
+*:hover > .vc-gifo-overlay-btn,
+.vc-gifo-overlay-btn:focus-visible {
+    opacity: 1;
+}
+
+.vc-gifo-overlay-btn:hover {
+    background: rgb(0 0 0 / 85%);
+}
