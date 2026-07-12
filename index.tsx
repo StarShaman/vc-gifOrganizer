@@ -9,7 +9,7 @@ import "./style.css";
 import definePlugin from "@utils/types";
 import { ContextMenuApi, React } from "@webpack/common";
 
-import { makeOverlayButton, messageContextMenuPatch, startChatButtons, stopChatButtons } from "./chat";
+import { messageContextMenuPatch, startChatButtons, stopChatButtons } from "./chat";
 import { CategoryMenu, GifMenu } from "./components";
 import { prefix, settings } from "./settings";
 import {
@@ -75,12 +75,13 @@ export default definePlugin({
                 replace: "$1if($self.shouldStopFetch(arguments[0]))return;$2"
             }
         },
-        // Every gif/category tile: add a context menu + a ref we use to append our folder button
+        // Every gif/category tile: add a context menu (the folder button rides on the
+        // native favorite star via the DOM observer in chat.tsx)
         {
             find: "renderEmptyFavorite",
             replacement: {
                 match: /onClick:this\.handleClick,/,
-                replace: "$&onContextMenu:e=>$self.onTileContext(e,this),ref:e=>$self.tileRef(e,this),"
+                replace: "$&onContextMenu:e=>$self.onTileContext(e,this),"
             }
         }
     ],
@@ -166,28 +167,6 @@ export default definePlugin({
         return typeof query === "string"
             && query.startsWith(prefix())
             && findCategory(query.slice(prefix().length)) != null;
-    },
-
-    /**
-     * Ref callback injected into each picker tile. Appends our folder button as the
-     * LAST child of the tile root - a trailing foreign node React never reorders.
-     */
-    tileRef(node: unknown, instance: TileInstance) {
-        try {
-            if (!(node instanceof HTMLElement)) return;
-            if (node.querySelector(":scope > .vc-gifo-overlay-btn")) return;
-
-            const item = instance?.props?.item;
-            // skip category/trending cards - the button is only for actual gifs
-            if (!item || item.type != null || item.name != null) return;
-
-            const gif = gifFromItem(item);
-            if (!gif) return;
-
-            node.appendChild(makeOverlayButton(gif, "picker"));
-        } catch (err) {
-            logger.error("tileRef failed", err);
-        }
     },
 
     onTileContext(e: React.MouseEvent, instance: TileInstance) {

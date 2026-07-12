@@ -13,13 +13,13 @@ import { settings } from "./settings";
 import { GifInput, logger } from "./store";
 import { Format } from "./types";
 
-const BTN_CLASS = "vc-gifo-overlay-btn";
+const BTN_ATTR = "data-vc-gifo";
 
-const FOLDER_SVG = `<svg width="16" height="16" viewBox="0 0 24 24" aria-hidden="true">
-<path fill="none" stroke="currentColor" stroke-width="2" stroke-linejoin="round"
+const FOLDER_PATHS = `<path fill="none" stroke="currentColor" stroke-width="2" stroke-linejoin="round"
     d="M3 6a2 2 0 0 1 2-2h3.59a1 1 0 0 1 .7.3L10.7 5.7a1 1 0 0 0 .71.3H19a2 2 0 0 1 2 2v10a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V6Z"/>
-<path fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" d="M12 10.5v5M9.5 13h5"/>
-</svg>`;
+<path fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" d="M12 10.5v5M9.5 13h5"/>`;
+
+const FOLDER_SVG = `<svg width="24" height="24" viewBox="0 0 24 24" aria-hidden="true">${FOLDER_PATHS}</svg>`;
 
 /* ------------------------------- shared helpers ------------------------------- */
 
@@ -50,27 +50,6 @@ function openGifMenu(e: MouseEvent, gif: GifInput, target: HTMLElement) {
     } as any, () => <GifMenu gif={gif} />);
 }
 
-/**
- * Build the overlay folder button as a plain DOM node.
- * IMPORTANT: only ever APPEND this as the last child of a stable container.
- * Never insert it between React-managed siblings - React's reconciler will
- * crash the client when it tries to reorder nodes around a foreign element.
- */
-export function makeOverlayButton(gif: GifInput, variant: "picker" | "chat" = "chat"): HTMLElement {
-    const btn = document.createElement("div");
-    btn.className = `${BTN_CLASS} ${BTN_CLASS}-${variant}`;
-    btn.setAttribute("role", "button");
-    btn.setAttribute("aria-label", "Add GIF to category");
-    btn.innerHTML = FOLDER_SVG;
-    btn.addEventListener("mousedown", e => { e.preventDefault(); e.stopPropagation(); });
-    btn.addEventListener("click", e => {
-        e.preventDefault();
-        e.stopPropagation();
-        openGifMenu(e, gif, btn);
-    });
-    return btn;
-}
-
 /* ---------------------------- on-gif overlay button ---------------------------- */
 
 /** Walk the React fiber upwards from the native star to find the gif props it was rendered with */
@@ -99,76 +78,56 @@ function findGifProps(node: HTMLElement): GifInput | null {
 }
 
 /**
- * Match the star's size/corner and sit directly beside it, whichever side of
- * the container it lives on (Discord puts it top-left in chat, and layouts vary).
- */
-function alignBesideStar(btn: HTMLElement, star: HTMLElement, container: HTMLElement) {
-    try {
-        const rect = star.getBoundingClientRect();
-        const box = container.getBoundingClientRect();
-        if (rect.width < 14 || box.width < 48) return;
-
-        btn.style.width = rect.width + "px";
-        btn.style.height = rect.height + "px";
-        btn.style.top = Math.max(rect.top - box.top, 0) + "px";
-        btn.style.borderRadius = getComputedStyle(star).borderRadius;
-
-        const gap = 6;
-        if (rect.left + rect.width / 2 < box.left + box.width / 2) {
-            // star on the left half -> we go to its right
-            btn.style.left = (rect.right - box.left + gap) + "px";
-            btn.style.right = "auto";
-        } else {
-            // star on the right half -> we go to its left
-            btn.style.right = (box.right - rect.left + gap) + "px";
-            btn.style.left = "auto";
-        }
-    } catch { /* keep CSS defaults */ }
-}
-
-/**
- * A native favorite star just mounted (they appear on hover).
- * In the picker: our button already exists on the tile (via the tile patch) - align it.
- * In chat: append our button to the star's positioned container.
+ * A native favorite star just mounted (they appear on hover, in chat and in the
+ * picker alike). Clone it into a folder button and append the clone AFTER it in
+ * the same container: the clone inherits Discord's exact classes, so size,
+ * corner, margins and hover behavior always match the star - no geometry math.
+ * Trailing appendChild only; React tolerates trailing foreign nodes.
  */
 function handleStar(star: HTMLElement) {
+    if (star.hasAttribute(BTN_ATTR)) return; // one of our own clones
     if (star.closest('[class*="channelAttachmentArea"]')) return;
 
-    // picker tile: find our existing button on an ancestor and align it to the star
-    if (star.closest('[class*="expressionPicker"]')) {
-        let p = star.parentElement;
-        for (let i = 0; p && i < 8; i++, p = p.parentElement) {
-            const btn = p.querySelector(`:scope > .${BTN_CLASS}`) as HTMLElement | null;
-            if (btn) {
-                alignBesideStar(btn, star, p);
-                return;
-            }
-        }
-        return;
-    }
+    const inPicker = star.closest('[class*="expressionPicker"]') != null;
+    if (!inPicker && !settings.store.chatButton) return;
 
-    // chat: the star's offsetParent is the positioned media container it lives in
-    const wrapper = (star.offsetParent instanceof HTMLElement && star.offsetParent.tagName !== "BODY"
-        ? star.offsetParent
-        : star.closest('[class*="imageWrapper"],[class*="visualMediaItemContainer"],[class*="mosaicItem"]')
-    ) as HTMLElement | null;
-    if (!wrapper) return;
-
-    const existing = wrapper.querySelector(`:scope > .${BTN_CLASS}`) as HTMLElement | null;
-    if (existing) {
-        alignBesideStar(existing, star, wrapper);
-        return;
-    }
+    const parent = star.parentElement;
+    if (!parent) return;
 
     const gif = findGifProps(star);
     if (!gif) return;
 
-    if (getComputedStyle(wrapper).position === "static")
-        wrapper.style.position = "relative";
+    const existing = parent.querySelector(`:scope > [${BTN_ATTR}]`) as HTMLElement | null;
+    if (existing) {
+        if (existing.getAttribute(BTN_ATTR) === gif.url) return;
+        existing.remove(); // container recycled for a different gif -> rebuild
+    }
 
-    const btn = makeOverlayButton(gif, "chat");
-    wrapper.appendChild(btn);
-    alignBesideStar(btn, star, wrapper);
+    const btn = star.cloneNode(true) as HTMLElement;
+    btn.setAttribute(BTN_ATTR, gif.url);
+    btn.setAttribute("aria-label", "Add GIF to category");
+    btn.removeAttribute("id");
+
+    const svg = btn.querySelector("svg");
+    if (svg) svg.innerHTML = FOLDER_PATHS;
+    else btn.innerHTML = FOLDER_SVG;
+
+    btn.addEventListener("mousedown", e => { e.preventDefault(); e.stopPropagation(); });
+    btn.addEventListener("click", e => {
+        e.preventDefault();
+        e.stopPropagation();
+        openGifMenu(e, gif, btn);
+    });
+
+    // if the star is corner-positioned (rather than a flex-row item),
+    // shift the clone right beside it - same box metrics, so this is exact
+    if (getComputedStyle(star).position === "absolute") {
+        btn.style.left = (star.offsetLeft + star.offsetWidth + 6) + "px";
+        btn.style.top = star.offsetTop + "px";
+        btn.style.right = "auto";
+    }
+
+    parent.appendChild(btn);
 }
 
 let observer: MutationObserver | null = null;
@@ -196,10 +155,9 @@ export function startChatButtons() {
     if (observer) return;
     scan(document.body);
     observer = new MutationObserver(mutations => {
-        if (!settings.store.chatButton) return;
         for (const m of mutations) {
             for (const n of m.addedNodes) {
-                if (!(n instanceof HTMLElement) || n.classList.contains(BTN_CLASS)) continue;
+                if (!(n instanceof HTMLElement) || n.hasAttribute(BTN_ATTR)) continue;
                 (pending ??= new Set()).add(n);
             }
         }
@@ -214,7 +172,7 @@ export function stopChatButtons() {
     if (flushTimer != null) clearTimeout(flushTimer);
     flushTimer = null;
     pending = null;
-    document.querySelectorAll(`.${BTN_CLASS}`).forEach(el => el.remove());
+    document.querySelectorAll(`[${BTN_ATTR}]`).forEach(el => el.remove());
 }
 
 /* ----------------------------- message context menu ----------------------------- */
