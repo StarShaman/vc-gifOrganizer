@@ -17,7 +17,7 @@ Prerequisites: [Git](https://git-scm.com/), [Node.js](https://nodejs.org/), and 
 git clone https://github.com/Vendicated/Vencord
 cd Vencord
 pnpm install --frozen-lockfile
-git clone https://github.com/YOUR_GITHUB_NAME/vc-gifOrganizer src/userplugins/gifOrganizer
+git clone https://github.com/StarShaman/vc-gifOrganizer src/userplugins/gifOrganizer
 pnpm build
 pnpm inject
 ```
