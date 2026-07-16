@@ -45,7 +45,7 @@ Fully restart Discord after an update to load it.
 
 ## Settings
 
-- **Video support** *(off by default)* – also save plain videos (uploads and video embeds) to categories, with a folder button on videos in chat. Tenor/Giphy GIFs are always supported regardless.
+- **Video support** *(off by default)* – also save plain videos (uploads and video embeds) to categories, with a folder button on videos in chat. Tenor/Giphy GIFs are always supported regardless. Saved videos show a "VIDEO" tag in the corner of their tile in category views.
 - **Only show categories** – hide Discord's trending categories entirely.
 - **Newest first** – GIF order inside a category view.
 - **Card sort** – name / recently updated / newest created.

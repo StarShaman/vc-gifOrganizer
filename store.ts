@@ -101,9 +101,13 @@ export interface GifInput {
     width?: number;
     height?: number;
     format?: Format;
+    kind?: "gif" | "video";
 }
 
 function makeStoredGif(gif: GifInput): StoredGif {
+    // when re-saving an item we already know (e.g. from a category view tile),
+    // inherit its kind so videos stay marked as videos
+    const known = categories.flatMap(c => c.gifs).find(g => g.url === gif.url)?.kind;
     return {
         id: ITEM_PREFIX + crypto.randomUUID(),
         src: gif.src,
@@ -111,6 +115,7 @@ function makeStoredGif(gif: GifInput): StoredGif {
         width: gif.width ?? 0,
         height: gif.height ?? 0,
         format: gif.format ?? getFormat(gif.src),
+        kind: gif.kind ?? known ?? "gif",
         addedAt: Date.now()
     };
 }

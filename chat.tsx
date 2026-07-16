@@ -9,8 +9,8 @@ import { Embed, Message } from "@vencord/discord-types";
 import { ContextMenuApi, Menu, MessageStore } from "@webpack/common";
 
 import { GifMenu, gifMenuItems } from "./components";
-import { settings } from "./settings";
-import { GifInput, logger } from "./store";
+import { prefix, settings } from "./settings";
+import { findCategory, GifInput, logger, uiRefs } from "./store";
 import { Format } from "./types";
 
 const BTN_ATTR = "data-vc-gifo";
@@ -180,7 +180,8 @@ function handleVideo(el: Element) {
                     url: vids[0].url,
                     width: vids[0].width,
                     height: vids[0].height,
-                    format: Format.VIDEO
+                    format: Format.VIDEO,
+                    kind: "video"
                 };
             }
         }
@@ -188,7 +189,7 @@ function handleVideo(el: Element) {
             const vembeds = message.embeds.filter(e => e.video?.proxyURL && !isGifLikeEmbed(e));
             if (vembeds.length === 1) {
                 const v = vembeds[0].video!;
-                gif = { src: v.proxyURL!, url: v.url ?? v.proxyURL!, width: v.width, height: v.height, format: Format.VIDEO };
+                gif = { src: v.proxyURL!, url: v.url ?? v.proxyURL!, width: v.width, height: v.height, format: Format.VIDEO, kind: "video" };
             }
         }
         if (!gif) return;
@@ -217,6 +218,40 @@ function handleVideo(el: Element) {
     }
 }
 
+/**
+ * "VIDEO" badge in the top-right corner of picker tiles that show one of our
+ * stored real videos, so they're distinguishable from GIFs at a glance.
+ */
+function handlePickerVideo(el: Element) {
+    try {
+        if (!(el instanceof HTMLVideoElement) || !el.closest('[class*="expressionPicker"]')) return;
+
+        const query = uiRefs.lastCategoryQuery;
+        if (!query) return;
+        const cat = findCategory(query.slice(prefix().length));
+        if (!cat) return;
+
+        const src = el.currentSrc || el.src;
+        if (!src) return;
+        const clean = cleanUrl(src);
+        const item = cat.gifs.find(g => cleanUrl(g.src) === clean);
+        if (item?.kind !== "video") return;
+
+        const parent = el.parentElement;
+        if (!parent || parent.querySelector(":scope > .vc-gifo-badge")) return;
+
+        if (getComputedStyle(parent).position === "static")
+            parent.style.position = "relative";
+
+        const badge = document.createElement("div");
+        badge.className = "vc-gifo-badge";
+        badge.textContent = "VIDEO";
+        parent.appendChild(badge);
+    } catch (err) {
+        logger.error("handlePickerVideo failed", err);
+    }
+}
+
 let observer: MutationObserver | null = null;
 let pending: Set<HTMLElement> | null = null;
 let flushTimer: ReturnType<typeof setTimeout> | null = null;
@@ -224,10 +259,8 @@ let flushTimer: ReturnType<typeof setTimeout> | null = null;
 function scan(root: HTMLElement) {
     if (root.matches?.('[class*="gifFavoriteButton"]')) handleStar(root);
     root.querySelectorAll?.('[class*="gifFavoriteButton"]').forEach(el => handleStar(el as HTMLElement));
-    if (settings.store.videoSupport) {
-        if (root.matches?.("video")) handleVideo(root);
-        root.querySelectorAll?.("video").forEach(handleVideo);
-    }
+    if (root.matches?.("video")) { handleVideo(root); handlePickerVideo(root); }
+    root.querySelectorAll?.("video").forEach(el => { handleVideo(el); handlePickerVideo(el); });
 }
 
 function flush() {
@@ -263,7 +296,7 @@ export function stopChatButtons() {
     if (flushTimer != null) clearTimeout(flushTimer);
     flushTimer = null;
     pending = null;
-    document.querySelectorAll(`[${BTN_ATTR}]`).forEach(el => el.remove());
+    document.querySelectorAll(`[${BTN_ATTR}], .vc-gifo-badge`).forEach(el => el.remove());
 }
 
 /* ----------------------------- message context menu ----------------------------- */
@@ -289,13 +322,15 @@ function gifFromMessage(message: Message, url?: string, target?: HTMLElement): G
 
     if (embed) {
         if (embed.video?.proxyURL) {
-            if (!isGifLikeEmbed(embed) && !settings.store.videoSupport) return null;
+            const gifLike = isGifLikeEmbed(embed);
+            if (!gifLike && !settings.store.videoSupport) return null;
             return {
                 src: embed.video.proxyURL,
                 url: embed.provider?.name === "Tenor" ? embed.url ?? embed.video.url : embed.video.url,
                 width: embed.video.width,
                 height: embed.video.height,
-                format: Format.VIDEO
+                format: Format.VIDEO,
+                kind: gifLike ? "gif" : "video"
             };
         }
         const img = embed.image ?? embed.thumbnail;
@@ -322,7 +357,8 @@ function gifFromMessage(message: Message, url?: string, target?: HTMLElement): G
             url: attachment.url,
             width: attachment.width,
             height: attachment.height,
-            format: isVideo ? Format.VIDEO : Format.IMAGE
+            format: isVideo ? Format.VIDEO : Format.IMAGE,
+            kind: isVideo ? "video" : "gif"
         };
     }
 

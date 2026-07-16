@@ -36,3 +36,20 @@
 .vc-gifo-video-btn:hover {
     background: rgb(0 0 0 / 85%);
 }
+
+/* "VIDEO" tag on stored videos in category views */
+.vc-gifo-badge {
+    position: absolute;
+    top: 6px;
+    right: 6px;
+    z-index: 9;
+    padding: 2px 5px;
+    border-radius: 4px;
+    background: rgb(0 0 0 / 75%);
+    color: #fff;
+    font-size: 10px;
+    font-weight: 700;
+    letter-spacing: 0.5px;
+    line-height: 1.2;
+    pointer-events: none;
+}

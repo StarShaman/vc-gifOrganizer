@@ -17,6 +17,8 @@ export interface StoredGif {
     width: number;
     height: number;
     format: Format;
+    /** "video" = a real video (upload/embed); "gif" (or absent) = gif, incl. Tenor mp4s */
+    kind?: "gif" | "video";
     addedAt: number;
 }
 
