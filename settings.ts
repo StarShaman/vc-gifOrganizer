@@ -32,6 +32,11 @@ export const settings = definePluginSettings({
             { label: "Newest created first", value: "created" }
         ]
     },
+    videoSupport: {
+        description: "Also allow saving plain videos (uploads and video embeds, not just GIFs) to categories, with a folder button on videos in chat.",
+        type: OptionType.BOOLEAN,
+        default: false
+    },
     chatButton: {
         description: "Show a category button next to the favorite star on GIFs in chat.",
         type: OptionType.BOOLEAN,

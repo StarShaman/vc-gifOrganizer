@@ -5,8 +5,8 @@
  */
 
 import { findGroupChildrenByChildId, NavContextMenuPatchCallback } from "@api/ContextMenu";
-import { Message } from "@vencord/discord-types";
-import { ContextMenuApi, Menu } from "@webpack/common";
+import { Embed, Message } from "@vencord/discord-types";
+import { ContextMenuApi, Menu, MessageStore } from "@webpack/common";
 
 import { GifMenu, gifMenuItems } from "./components";
 import { settings } from "./settings";
@@ -34,6 +34,13 @@ function cleanUrl(url: string): string {
 
 function coerceFormat(format: unknown): Format | undefined {
     return format === Format.IMAGE || format === Format.VIDEO ? format : undefined;
+}
+
+/** Tenor/Giphy/gifv embeds are GIFs that happen to be mp4s - always treated as GIFs */
+function isGifLikeEmbed(e: Embed | undefined | null): boolean {
+    if (!e) return false;
+    return (e as any).type === "gifv"
+        || ["tenor", "giphy"].includes(e.provider?.name?.toLowerCase?.() ?? "");
 }
 
 function openGifMenu(e: MouseEvent, gif: GifInput, target: HTMLElement) {
@@ -130,6 +137,86 @@ function handleStar(star: HTMLElement) {
     parent.appendChild(btn);
 }
 
+/* ------------------------------ on-video button ------------------------------ */
+
+/**
+ * Plain videos (uploads, proxied video embeds) have no favorite star to ride on,
+ * so when video support is enabled we add our own overlay button. GIF-like
+ * videos (Tenor/Giphy/gifv render as <video> too) are left to the star flow.
+ */
+function handleVideo(el: Element) {
+    try {
+        if (!settings.store.videoSupport || !(el instanceof HTMLVideoElement)) return;
+        if (el.closest('[class*="expressionPicker"],[class*="channelAttachmentArea"]')) return;
+
+        const wrapper = (el.closest(
+            '[class*="mosaicItem"],[class*="videoAttachment"],[class*="embedVideo"],[class*="imageWrapper"],[class*="visualMediaItemContainer"]'
+        ) ?? el.parentElement) as HTMLElement | null;
+        if (!wrapper) return;
+        if (wrapper.querySelector(`[${BTN_ATTR}],[class*="gifFavoriteButton"]`)) return;
+
+        const li = el.closest('li[id^="chat-messages-"]');
+        if (!li) return;
+        const [channelId, messageId] = li.id.split("-").slice(2);
+        if (!channelId || !messageId) return;
+        const message: Message | undefined = MessageStore.getMessage(channelId, messageId);
+        if (!message) return;
+
+        const src = el.currentSrc || el.src;
+        const cleanSrc = src && !src.startsWith("blob:") ? cleanUrl(src) : null;
+
+        // if this <video> belongs to a gif-like embed, the star flow owns it
+        const srcEmbed = cleanSrc ? message.embeds.find(e => [e.url, e.video?.proxyURL, e.video?.url]
+            .filter(Boolean).map(u => cleanUrl(u!)).includes(cleanSrc)) : null;
+        if (srcEmbed ? isGifLikeEmbed(srcEmbed) : (!message.attachments.length && message.embeds.length > 0 && message.embeds.every(isGifLikeEmbed))) return;
+
+        let gif: GifInput | null = cleanSrc ? gifFromMessage(message, src, el) : null;
+
+        if (!gif) {
+            const vids = message.attachments.filter(a => a.content_type?.startsWith("video"));
+            if (vids.length === 1) {
+                gif = {
+                    src: vids[0].proxy_url ?? vids[0].url,
+                    url: vids[0].url,
+                    width: vids[0].width,
+                    height: vids[0].height,
+                    format: Format.VIDEO
+                };
+            }
+        }
+        if (!gif) {
+            const vembeds = message.embeds.filter(e => e.video?.proxyURL && !isGifLikeEmbed(e));
+            if (vembeds.length === 1) {
+                const v = vembeds[0].video!;
+                gif = { src: v.proxyURL!, url: v.url ?? v.proxyURL!, width: v.width, height: v.height, format: Format.VIDEO };
+            }
+        }
+        if (!gif) return;
+
+        if (getComputedStyle(wrapper).position === "static")
+            wrapper.style.position = "relative";
+
+        const btn = document.createElement("div");
+        btn.className = "vc-gifo-video-btn";
+        btn.setAttribute(BTN_ATTR, gif.url);
+        btn.setAttribute("role", "button");
+        btn.setAttribute("aria-label", "Add video to category");
+        btn.innerHTML = FOLDER_SVG;
+
+        const g = gif;
+        btn.addEventListener("mousedown", e => { e.preventDefault(); e.stopPropagation(); });
+        btn.addEventListener("click", e => {
+            e.preventDefault();
+            e.stopPropagation();
+            openGifMenu(e, g, btn);
+        });
+
+        wrapper.appendChild(btn);
+    } catch (err) {
+        logger.error("handleVideo failed", err);
+    }
+}
+
 let observer: MutationObserver | null = null;
 let pending: Set<HTMLElement> | null = null;
 let flushTimer: ReturnType<typeof setTimeout> | null = null;
@@ -137,6 +224,10 @@ let flushTimer: ReturnType<typeof setTimeout> | null = null;
 function scan(root: HTMLElement) {
     if (root.matches?.('[class*="gifFavoriteButton"]')) handleStar(root);
     root.querySelectorAll?.('[class*="gifFavoriteButton"]').forEach(el => handleStar(el as HTMLElement));
+    if (settings.store.videoSupport) {
+        if (root.matches?.("video")) handleVideo(root);
+        root.querySelectorAll?.("video").forEach(handleVideo);
+    }
 }
 
 function flush() {
@@ -198,6 +289,7 @@ function gifFromMessage(message: Message, url?: string, target?: HTMLElement): G
 
     if (embed) {
         if (embed.video?.proxyURL) {
+            if (!isGifLikeEmbed(embed) && !settings.store.videoSupport) return null;
             return {
                 src: embed.video.proxyURL,
                 url: embed.provider?.name === "Tenor" ? embed.url ?? embed.video.url : embed.video.url,
@@ -224,6 +316,7 @@ function gifFromMessage(message: Message, url?: string, target?: HTMLElement): G
 
     if (attachment) {
         const isVideo = attachment.content_type?.startsWith("video") ?? /\.(mp4|webm|mov)$/i.test(cleanUrl(attachment.url));
+        if (isVideo && !settings.store.videoSupport) return null;
         return {
             src: attachment.proxy_url ?? attachment.url,
             url: attachment.url,

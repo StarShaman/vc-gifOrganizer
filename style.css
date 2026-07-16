@@ -4,3 +4,35 @@
 [data-vc-gifo] {
     cursor: pointer;
 }
+
+/* Videos have no favorite star to clone, so this one is styled by us */
+.vc-gifo-video-btn {
+    position: absolute;
+    top: 8px;
+    left: 8px;
+    z-index: 10;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    box-sizing: border-box;
+    width: 32px;
+    height: 32px;
+    border-radius: 8px;
+    background: rgb(0 0 0 / 72%);
+    color: #fff;
+    opacity: 0;
+    transition: opacity 0.12s ease, background 0.12s ease;
+}
+
+.vc-gifo-video-btn svg {
+    width: 18px;
+    height: 18px;
+}
+
+*:hover > .vc-gifo-video-btn {
+    opacity: 1;
+}
+
+.vc-gifo-video-btn:hover {
+    background: rgb(0 0 0 / 85%);
+}
