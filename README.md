@@ -47,6 +47,7 @@ Fully restart Discord after an update to load it.
 
 - **Video support** *(off by default)* – also save plain videos (uploads and video embeds) to categories, with a folder button on videos in chat. Tenor/Giphy GIFs are always supported regardless. Saved videos show a "VIDEO" tag with their duration in the corner of their tile in category views.
 - **Exclusive categories** *(off by default)* – each GIF/video can only be in one category at a time; remove it from its category before filing it into another.
+- **Hide favorites star in categories** *(off by default)* – hide Discord's add/remove-favorites star on tiles while browsing your categories.
 - **Only show categories** – hide Discord's trending categories entirely.
 - **Newest first** – GIF order inside a category view.
 - **Card sort** – name / recently updated / newest created.

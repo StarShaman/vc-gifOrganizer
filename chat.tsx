@@ -32,6 +32,10 @@ function cleanUrl(url: string): string {
     }
 }
 
+function inChatMessage(el: Element): boolean {
+    return el.closest('li[id^="chat-messages-"]') != null;
+}
+
 function coerceFormat(format: unknown): Format | undefined {
     return format === Format.IMAGE || format === Format.VIDEO ? format : undefined;
 }
@@ -104,8 +108,15 @@ function handleStar(star: HTMLElement) {
     const gif = findGifProps(star);
     if (!gif) return;
 
+    // optionally hide the star while browsing one of our categories
+    // (measure it before hiding - the clone's placement uses its metrics)
+    const hideStar = !inChatMessage(star)
+        && settings.store.hideStarInCategories
+        && uiRefs.lastCategoryQuery != null;
+
     const existing = parent.querySelector(`:scope > [${BTN_ATTR}]`) as HTMLElement | null;
     if (existing) {
+        if (hideStar) star.style.display = "none";
         if (existing.getAttribute(BTN_ATTR) === gif.url) return;
         existing.remove(); // container recycled for a different gif -> rebuild
     }
@@ -129,16 +140,20 @@ function handleStar(star: HTMLElement) {
     // if the star is corner-positioned (rather than a flex-row item), shift the
     // clone beside it on whichever side has room - same box metrics, so exact.
     // (chat puts the star top-left; the picker's category views put it top-right)
+    // when the star is being hidden, the clone takes its exact spot instead.
     if (getComputedStyle(star).position === "absolute") {
         const onLeftHalf = star.offsetLeft + star.offsetWidth / 2 < parent.clientWidth / 2;
-        btn.style.left = (onLeftHalf
-            ? star.offsetLeft + star.offsetWidth + 6
-            : star.offsetLeft - star.offsetWidth - 6) + "px";
+        btn.style.left = (hideStar
+            ? star.offsetLeft
+            : onLeftHalf
+                ? star.offsetLeft + star.offsetWidth + 6
+                : star.offsetLeft - star.offsetWidth - 6) + "px";
         btn.style.top = star.offsetTop + "px";
         btn.style.right = "auto";
     }
 
     parent.appendChild(btn);
+    if (hideStar) star.style.display = "none";
 }
 
 /* ------------------------------ on-video button ------------------------------ */

@@ -32,6 +32,11 @@ export const settings = definePluginSettings({
             { label: "Newest created first", value: "created" }
         ]
     },
+    hideStarInCategories: {
+        description: "Hide Discord's add/remove-favorites star on tiles while browsing one of your categories.",
+        type: OptionType.BOOLEAN,
+        default: false
+    },
     exclusiveMode: {
         description: "Each GIF/video can only be in one category at a time. Remove it from its category before filing it elsewhere.",
         type: OptionType.BOOLEAN,
