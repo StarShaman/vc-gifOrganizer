@@ -40,7 +40,7 @@ function coerceFormat(format: unknown): Format | undefined {
 function isGifLikeEmbed(e: Embed | undefined | null): boolean {
     if (!e) return false;
     return (e as any).type === "gifv"
-        || ["tenor", "giphy"].includes(e.provider?.name?.toLowerCase?.() ?? "");
+        || ["tenor", "giphy", "klipy", "gfycat"].includes(e.provider?.name?.toLowerCase?.() ?? "");
 }
 
 function openGifMenu(e: MouseEvent, gif: GifInput, target: HTMLElement) {

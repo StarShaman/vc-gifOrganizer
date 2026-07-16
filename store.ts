@@ -89,16 +89,17 @@ export function categoriesContaining(url: string): StoredCategory[] {
 }
 
 /**
- * Kind of a stored item, inferring it for items saved before kind-tagging:
- * an mp4 not hosted by Tenor/Giphy is a real video.
+ * Kind of a stored item. Anything traceable to Tenor/Giphy is a GIF - checked
+ * against the full src AND url, because Discord proxies Tenor media through
+ * images-ext-X.discordapp.net/external/.../media.tenor.com/... (the original
+ * host survives in the path). This also overrides items mis-tagged earlier.
  */
+const GIF_HOSTS = /(^|[./])(tenor|giphy|klipy|gfycat)\.(com|co)([/:?]|$)/i;
+
 export function inferKind(g: StoredGif): "gif" | "video" {
-    if (g.kind) return g.kind;
     if ((g.format ?? getFormat(g.src)) !== Format.VIDEO) return "gif";
-    try {
-        if (/(^|\.)(tenor|giphy)\./i.test(new URL(g.src).hostname)) return "gif";
-    } catch { /* not a parsable url */ }
-    return "video";
+    if (GIF_HOSTS.test(g.src) || GIF_HOSTS.test(g.url)) return "gif";
+    return g.kind ?? "video";
 }
 
 function validateName(name: string): string | null {
