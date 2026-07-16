@@ -253,6 +253,21 @@ function handlePickerVideo(el: Element) {
         badge.className = "vc-gifo-badge";
         badge.textContent = "VIDEO";
         parent.appendChild(badge);
+
+        // append the duration once the video's metadata is known
+        const showDuration = () => {
+            const d = el.duration;
+            if (!Number.isFinite(d) || d <= 0) return;
+            const total = Math.round(d);
+            const m = Math.floor(total / 60);
+            const s = total % 60;
+            badge.textContent = `VIDEO · ${m}:${String(s).padStart(2, "0")}`;
+        };
+        if (el.readyState >= 1) showDuration();
+        else {
+            el.addEventListener("loadedmetadata", showDuration, { once: true });
+            if (el.preload === "none") el.preload = "metadata";
+        }
     } catch (err) {
         logger.error("handlePickerVideo failed", err);
     }
