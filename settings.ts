@@ -32,6 +32,11 @@ export const settings = definePluginSettings({
             { label: "Newest created first", value: "created" }
         ]
     },
+    exclusiveMode: {
+        description: "Each GIF/video can only be in one category at a time. Remove it from its category before filing it elsewhere.",
+        type: OptionType.BOOLEAN,
+        default: false
+    },
     videoSupport: {
         description: "Also allow saving plain videos (uploads and video embeds, not just GIFs) to categories, with a folder button on videos in chat.",
         type: OptionType.BOOLEAN,

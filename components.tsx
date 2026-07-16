@@ -7,6 +7,7 @@
 import { RenderModalProps } from "@vencord/discord-types";
 import { ConfirmModal, ContextMenuApi, Menu, Modal, openModal, TextInput, useState } from "@webpack/common";
 
+import { settings } from "./settings";
 import {
     addGifToCategory, categoriesContaining, createCategory, deleteCategory,
     GifInput, removeGifFromCategory, renameCategory, sortedCategories
@@ -27,7 +28,9 @@ function closeMenu() {
  */
 export function gifMenuItems(gif: GifInput, instance?: TileInstance) {
     const containing = categoriesContaining(gif.url);
-    const others = sortedCategories().filter(c => !containing.includes(c));
+    // exclusive mode: once filed, only removal is offered until it's removed
+    const locked = settings.store.exclusiveMode && containing.length > 0;
+    const others = locked ? [] : sortedCategories().filter(c => !containing.includes(c));
 
     const done = () => instance?.forceUpdate();
 
@@ -40,12 +43,14 @@ export function gifMenuItems(gif: GifInput, instance?: TileInstance) {
                 action={() => { addGifToCategory(c.name, gif).then(done); }}
             />
         )),
-        <Menu.MenuItem
-            key="new-category"
-            id="vc-gifo-new-category"
-            label="Add to new category…"
-            action={() => openNewCategoryModal(gif, done)}
-        />,
+        ...(locked ? [] : [
+            <Menu.MenuItem
+                key="new-category"
+                id="vc-gifo-new-category"
+                label="Add to new category…"
+                action={() => openNewCategoryModal(gif, done)}
+            />
+        ]),
         ...(containing.length > 0 ? [<Menu.MenuSeparator key="sep" />] : []),
         ...containing.map(c => (
             <Menu.MenuItem

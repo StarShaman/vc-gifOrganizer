@@ -146,6 +146,11 @@ export async function createCategory(name: string, gif?: GifInput): Promise<stri
     const err = validateName(name);
     if (err) return err;
 
+    if (gif && settings.store.exclusiveMode) {
+        const existing = categoriesContaining(gif.url)[0];
+        if (existing) return `Exclusive mode: this item is already in "${existing.name}"`;
+    }
+
     const gifs = gif ? [makeStoredGif(gif)] : [];
     const cat: StoredCategory = {
         name,
@@ -169,6 +174,14 @@ export async function addGifToCategory(name: string, gif: GifInput) {
     if (cat.gifs.some(g => g.url === gif.url)) {
         toast("This GIF is already in that category");
         return;
+    }
+
+    if (settings.store.exclusiveMode) {
+        const existing = categoriesContaining(gif.url)[0];
+        if (existing) {
+            toast(`Exclusive mode: already in "${existing.name}" - remove it there first`);
+            return;
+        }
     }
 
     cat.gifs.push(makeStoredGif(gif));
