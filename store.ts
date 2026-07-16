@@ -88,6 +88,19 @@ export function categoriesContaining(url: string): StoredCategory[] {
     return categories.filter(c => c.gifs.some(g => g.url === url));
 }
 
+/**
+ * Kind of a stored item, inferring it for items saved before kind-tagging:
+ * an mp4 not hosted by Tenor/Giphy is a real video.
+ */
+export function inferKind(g: StoredGif): "gif" | "video" {
+    if (g.kind) return g.kind;
+    if ((g.format ?? getFormat(g.src)) !== Format.VIDEO) return "gif";
+    try {
+        if (/(^|\.)(tenor|giphy)\./i.test(new URL(g.src).hostname)) return "gif";
+    } catch { /* not a parsable url */ }
+    return "video";
+}
+
 function validateName(name: string): string | null {
     if (!name) return "Category name can't be empty";
     if (categories.some(c => c.name.toLowerCase() === name.toLowerCase()))

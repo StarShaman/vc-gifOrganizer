@@ -37,10 +37,11 @@
     background: rgb(0 0 0 / 85%);
 }
 
-/* "VIDEO" tag on stored videos in category views */
+/* "VIDEO" tag on stored videos in category views (bottom-right like a
+   duration chip - the favorite star occupies the top-right corner there) */
 .vc-gifo-badge {
     position: absolute;
-    top: 6px;
+    bottom: 6px;
     right: 6px;
     z-index: 9;
     padding: 2px 5px;

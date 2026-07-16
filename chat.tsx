@@ -10,7 +10,7 @@ import { ContextMenuApi, Menu, MessageStore } from "@webpack/common";
 
 import { GifMenu, gifMenuItems } from "./components";
 import { prefix, settings } from "./settings";
-import { findCategory, GifInput, logger, uiRefs } from "./store";
+import { findCategory, GifInput, inferKind, logger, uiRefs } from "./store";
 import { Format } from "./types";
 
 const BTN_ATTR = "data-vc-gifo";
@@ -126,10 +126,14 @@ function handleStar(star: HTMLElement) {
         openGifMenu(e, gif, btn);
     });
 
-    // if the star is corner-positioned (rather than a flex-row item),
-    // shift the clone right beside it - same box metrics, so this is exact
+    // if the star is corner-positioned (rather than a flex-row item), shift the
+    // clone beside it on whichever side has room - same box metrics, so exact.
+    // (chat puts the star top-left; the picker's category views put it top-right)
     if (getComputedStyle(star).position === "absolute") {
-        btn.style.left = (star.offsetLeft + star.offsetWidth + 6) + "px";
+        const onLeftHalf = star.offsetLeft + star.offsetWidth / 2 < parent.clientWidth / 2;
+        btn.style.left = (onLeftHalf
+            ? star.offsetLeft + star.offsetWidth + 6
+            : star.offsetLeft - star.offsetWidth - 6) + "px";
         btn.style.top = star.offsetTop + "px";
         btn.style.right = "auto";
     }
@@ -224,7 +228,9 @@ function handleVideo(el: Element) {
  */
 function handlePickerVideo(el: Element) {
     try {
-        if (!(el instanceof HTMLVideoElement) || !el.closest('[class*="expressionPicker"]')) return;
+        // category views only exist in the picker; chat messages are excluded
+        // directly so this doesn't depend on Discord's picker class names
+        if (!(el instanceof HTMLVideoElement) || el.closest('li[id^="chat-messages-"]')) return;
 
         const query = uiRefs.lastCategoryQuery;
         if (!query) return;
@@ -235,7 +241,7 @@ function handlePickerVideo(el: Element) {
         if (!src) return;
         const clean = cleanUrl(src);
         const item = cat.gifs.find(g => cleanUrl(g.src) === clean);
-        if (item?.kind !== "video") return;
+        if (!item || inferKind(item) !== "video") return;
 
         const parent = el.parentElement;
         if (!parent || parent.querySelector(":scope > .vc-gifo-badge")) return;
