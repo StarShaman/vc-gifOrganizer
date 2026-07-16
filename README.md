@@ -57,6 +57,7 @@ Fully restart Discord after an update to load it.
 
 ## Notes
 
+- **Account switching:** categories are stored client-side (Vencord DataStore), not per Discord account — every account you log into on this client sees the same categories, and they don't sync to other devices. Per-account separation isn't decided yet and may change in a future version.
 - GIFs added from Discord CDN attachment links can expire (Discord rotates those URLs); Tenor/Giphy favorites are stable.
 - Webpack patch anchors are modeled after Equicord's GifCollections (GPL-3.0-or-later); the implementation is original.
 
