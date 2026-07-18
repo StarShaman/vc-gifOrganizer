@@ -427,6 +427,10 @@ export function startChatButtons() {
         for (const m of mutations) {
             for (const n of m.addedNodes) {
                 if (!(n instanceof HTMLElement) || n.hasAttribute(BTN_ATTR)) continue;
+                // build the sidebar synchronously (observer runs before paint),
+                // so it appears in the same frame as the GIF tab - no pop-in
+                const panel = n.id === PANEL_ID ? n : n.querySelector?.("#" + PANEL_ID);
+                if (panel) buildSidebar(panel as HTMLElement);
                 (pending ??= new Set()).add(n);
             }
         }

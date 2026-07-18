@@ -224,6 +224,21 @@ function BookmarkIconModal({ rootProps, name }: { rootProps: RenderModalProps; n
                 { text: "Cancel", variant: "secondary", onClick: rootProps.onClose }
             ]}
         >
+            <div className="vc-gifo-icon-grid">
+                {Object.entries(BUILTIN_ICONS).map(([key, path]) => (
+                    <button
+                        key={key}
+                        className="vc-gifo-icon-choice"
+                        style={{ color }}
+                        aria-label={key}
+                        onClick={() => pick("builtin:" + key)}
+                    >
+                        <svg width="24" height="24" viewBox="0 0 24 24">
+                            <path fill="currentColor" d={path} />
+                        </svg>
+                    </button>
+                ))}
+            </div>
             <div className="vc-gifo-color-row">
                 {SWATCHES.map(c => (
                     <button
@@ -241,21 +256,6 @@ function BookmarkIconModal({ rootProps, name }: { rootProps: RenderModalProps; n
                     onChange={e => setColor(e.currentTarget.value)}
                     aria-label="Custom color"
                 />
-            </div>
-            <div className="vc-gifo-icon-grid">
-                {Object.entries(BUILTIN_ICONS).map(([key, path]) => (
-                    <button
-                        key={key}
-                        className="vc-gifo-icon-choice"
-                        style={{ color }}
-                        aria-label={key}
-                        onClick={() => pick("builtin:" + key)}
-                    >
-                        <svg width="24" height="24" viewBox="0 0 24 24">
-                            <path fill="currentColor" d={path} />
-                        </svg>
-                    </button>
-                ))}
             </div>
         </Modal>
     );
