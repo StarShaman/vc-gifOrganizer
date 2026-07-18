@@ -305,15 +305,13 @@ function navigateToCategory(name: string) {
         logger.error("navigateToCategory setState failed", err);
     }
 
-    // same reset+query pattern the data-refresh path uses (flicker-free)
+    // The picker must actually RENDER the home state once before a new query,
+    // or its results header (back arrow) desyncs - a synchronous ""+query batch
+    // collapses that render away. One animation frame is the minimum gap.
     FluxDispatcher.dispatch({ type: "GIF_PICKER_QUERY", query: "" });
-    FluxDispatcher.dispatch({ type: "GIF_PICKER_QUERY", query: target });
-
-    // safety net: only fires if the view didn't land on our category
-    setTimeout(() => {
-        if (uiRefs.lastCategoryQuery !== target)
-            FluxDispatcher.dispatch({ type: "GIF_PICKER_QUERY", query: target });
-    }, 120);
+    requestAnimationFrame(() => requestAnimationFrame(() => {
+        FluxDispatcher.dispatch({ type: "GIF_PICKER_QUERY", query: target });
+    }));
 }
 
 function openFavoritesView() {
