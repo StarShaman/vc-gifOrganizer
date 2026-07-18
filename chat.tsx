@@ -292,17 +292,34 @@ function handlePickerVideo(el: Element) {
 
 const PANEL_ID = "gif-picker-tab-panel";
 
-function navigateToCategory(name: string) {
+function resetPickerView() {
     try {
-        // leave the Favorites view if we're in it - its resultType overrides queries
         (uiRefs.pickerRoot as any)?.setState?.({ resultType: null });
     } catch (err) {
-        logger.error("navigateToCategory setState failed", err);
+        logger.error("resetPickerView failed", err);
     }
-    // reset the query first: jumping query->query directly desyncs the picker's
-    // header state (the back arrow vanishes). Same pattern refreshUI uses.
+}
+
+function navigateToCategory(name: string) {
+    const target = prefix() + name;
+
+    // go home first and let the picker's view transition settle - dispatching
+    // the new query in the same tick races that transition, which strands the
+    // picker in a home view with a stale query and no back arrow
+    resetPickerView();
     FluxDispatcher.dispatch({ type: "GIF_PICKER_QUERY", query: "" });
-    FluxDispatcher.dispatch({ type: "GIF_PICKER_QUERY", query: prefix() + name });
+
+    setTimeout(() => {
+        FluxDispatcher.dispatch({ type: "GIF_PICKER_QUERY", query: target });
+
+        // if the view still didn't land on our category, retry once
+        setTimeout(() => {
+            if (uiRefs.lastCategoryQuery !== target) {
+                resetPickerView();
+                FluxDispatcher.dispatch({ type: "GIF_PICKER_QUERY", query: target });
+            }
+        }, 150);
+    }, 60);
 }
 
 function openFavoritesView() {
