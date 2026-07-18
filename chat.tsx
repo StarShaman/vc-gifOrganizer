@@ -292,34 +292,28 @@ function handlePickerVideo(el: Element) {
 
 const PANEL_ID = "gif-picker-tab-panel";
 
-function resetPickerView() {
-    try {
-        (uiRefs.pickerRoot as any)?.setState?.({ resultType: null });
-    } catch (err) {
-        logger.error("resetPickerView failed", err);
-    }
-}
-
 function navigateToCategory(name: string) {
     const target = prefix() + name;
+    const root: any = uiRefs.pickerRoot;
 
-    // go home first and let the picker's view transition settle - dispatching
-    // the new query in the same tick races that transition, which strands the
-    // picker in a home view with a stale query and no back arrow
-    resetPickerView();
+    // Only clear resultType when a special view (Favorites) is actually open.
+    // Clearing it unconditionally unmounts the results screen and strands the
+    // picker on home with a stale query and no back arrow.
+    try {
+        if (root?.state?.resultType != null) root.setState?.({ resultType: null });
+    } catch (err) {
+        logger.error("navigateToCategory setState failed", err);
+    }
+
+    // same reset+query pattern the data-refresh path uses (flicker-free)
     FluxDispatcher.dispatch({ type: "GIF_PICKER_QUERY", query: "" });
+    FluxDispatcher.dispatch({ type: "GIF_PICKER_QUERY", query: target });
 
+    // safety net: only fires if the view didn't land on our category
     setTimeout(() => {
-        FluxDispatcher.dispatch({ type: "GIF_PICKER_QUERY", query: target });
-
-        // if the view still didn't land on our category, retry once
-        setTimeout(() => {
-            if (uiRefs.lastCategoryQuery !== target) {
-                resetPickerView();
-                FluxDispatcher.dispatch({ type: "GIF_PICKER_QUERY", query: target });
-            }
-        }, 150);
-    }, 60);
+        if (uiRefs.lastCategoryQuery !== target)
+            FluxDispatcher.dispatch({ type: "GIF_PICKER_QUERY", query: target });
+    }, 120);
 }
 
 function openFavoritesView() {
