@@ -45,12 +45,21 @@
     width: calc(100% - 44px) !important;
 }
 
+/* hidden by default; only shown while the GIF tab's panel is mounted, so it
+   never leaks onto the Stickers/Emoji tabs (their shared parent hosts the bar) */
+.vc-gifo-sidebar {
+    display: none;
+}
+
+*:has(> #gif-picker-tab-panel) > .vc-gifo-sidebar {
+    display: flex;
+}
+
 .vc-gifo-sidebar {
     position: absolute;
     bottom: 0;
     left: 0;
     z-index: 5;
-    display: flex;
     flex-direction: column;
     align-items: center;
     gap: 6px;
