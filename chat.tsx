@@ -321,11 +321,12 @@ function bookmarkIconNode(icon: string): HTMLElement {
     return img;
 }
 
-function makeSidebarButton(title: string, icon: HTMLElement, onClick: () => void): HTMLElement {
+function makeSidebarButton(title: string, icon: HTMLElement, onClick: () => void, color?: string): HTMLElement {
     const btn = document.createElement("div");
     btn.className = "vc-gifo-bm";
     btn.title = title;
     btn.setAttribute("role", "button");
+    if (color) btn.style.color = color;
     btn.appendChild(icon);
     btn.addEventListener("click", e => {
         e.preventDefault();
@@ -335,24 +336,35 @@ function makeSidebarButton(title: string, icon: HTMLElement, onClick: () => void
     return btn;
 }
 
-/** Build/refresh the sidebar inside the GIF tab panel. Shown once >=1 bookmark exists. */
+/**
+ * Build/refresh the sidebar. Shown once >=1 bookmark exists.
+ * Anchored on the panel's PARENT, not the panel itself - Discord translates the
+ * panel content when switching views, which dragged the bar sideways before.
+ */
 function buildSidebar(panel: HTMLElement) {
     try {
+        const host = panel.parentElement;
+        if (!host) return;
+
         const bookmarked = sortedCategories().filter(c => c.bookmark);
-        let bar = panel.querySelector(":scope > .vc-gifo-sidebar") as HTMLElement | null;
+        let bar = host.querySelector(":scope > .vc-gifo-sidebar") as HTMLElement | null;
 
         if (!bookmarked.length) {
             bar?.remove();
-            panel.classList.remove("vc-gifo-has-sidebar");
+            panel.classList.remove("vc-gifo-squeeze");
             return;
         }
+
+        if (getComputedStyle(host).position === "static")
+            host.style.position = "relative";
 
         if (!bar) {
             bar = document.createElement("div");
             bar.className = "vc-gifo-sidebar";
-            panel.appendChild(bar);
+            host.appendChild(bar);
         }
-        panel.classList.add("vc-gifo-has-sidebar");
+        bar.style.top = panel.offsetTop + "px";
+        panel.classList.add("vc-gifo-squeeze");
         bar.innerHTML = "";
 
         bar.appendChild(makeSidebarButton(
@@ -370,7 +382,8 @@ function buildSidebar(panel: HTMLElement) {
             bar.appendChild(makeSidebarButton(
                 name,
                 bookmarkIconNode(cat.bookmark!.icon),
-                () => navigateToCategory(name)
+                () => navigateToCategory(name),
+                cat.bookmark!.color
             ));
         }
     } catch (err) {
@@ -430,7 +443,7 @@ export function stopChatButtons() {
     pending = null;
     uiRefs.refreshSidebar = null;
     document.querySelectorAll(`[${BTN_ATTR}], .vc-gifo-badge, .vc-gifo-sidebar`).forEach(el => el.remove());
-    document.querySelectorAll(".vc-gifo-has-sidebar").forEach(el => el.classList.remove("vc-gifo-has-sidebar"));
+    document.querySelectorAll(".vc-gifo-squeeze").forEach(el => el.classList.remove("vc-gifo-squeeze"));
 }
 
 /* ----------------------------- message context menu ----------------------------- */

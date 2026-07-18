@@ -236,10 +236,10 @@ export async function renameCategory(oldName: string, newName: string): Promise<
     return null;
 }
 
-export async function setBookmark(name: string, icon: string) {
+export async function setBookmark(name: string, icon: string, color?: string) {
     const cat = findCategory(name);
     if (!cat) return;
-    cat.bookmark = { icon };
+    cat.bookmark = color ? { icon, color } : { icon };
     cat.lastUpdated = Date.now();
     await save();
     toast(`Bookmarked "${name}"`, true);

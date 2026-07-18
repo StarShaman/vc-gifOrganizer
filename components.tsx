@@ -186,9 +186,14 @@ export function openNewCategoryModal(gif?: GifInput, onDone?: () => void) {
     ));
 }
 
+const SWATCHES = ["#ffffff", "#ed4245", "#faa61a", "#fee75c", "#57f287", "#5865f2", "#eb459e", "#9b59b6"];
+
 function BookmarkIconModal({ rootProps, name }: { rootProps: RenderModalProps; name: string; }) {
+    const existing = findCategory(name)?.bookmark;
+    const [color, setColor] = useState(existing?.color ?? "#ffffff");
+
     const pick = (icon: string) => {
-        setBookmark(name, icon);
+        setBookmark(name, icon, color === "#ffffff" ? undefined : color);
         rootProps.onClose();
     };
 
@@ -213,17 +218,36 @@ function BookmarkIconModal({ rootProps, name }: { rootProps: RenderModalProps; n
             {...rootProps}
             size="sm"
             title="Bookmark icon"
-            subtitle={`Pick an icon for "${name}"`}
+            subtitle={`Pick a color and an icon for "${name}"`}
             actions={[
                 { text: "Upload image…", variant: "primary", onClick: upload },
                 { text: "Cancel", variant: "secondary", onClick: rootProps.onClose }
             ]}
         >
+            <div className="vc-gifo-color-row">
+                {SWATCHES.map(c => (
+                    <button
+                        key={c}
+                        className={"vc-gifo-swatch" + (color === c ? " vc-gifo-swatch-active" : "")}
+                        style={{ background: c }}
+                        aria-label={c}
+                        onClick={() => setColor(c)}
+                    />
+                ))}
+                <input
+                    type="color"
+                    className="vc-gifo-color-input"
+                    value={color}
+                    onChange={e => setColor(e.currentTarget.value)}
+                    aria-label="Custom color"
+                />
+            </div>
             <div className="vc-gifo-icon-grid">
                 {Object.entries(BUILTIN_ICONS).map(([key, path]) => (
                     <button
                         key={key}
                         className="vc-gifo-icon-choice"
+                        style={{ color }}
                         aria-label={key}
                         onClick={() => pick("builtin:" + key)}
                     >

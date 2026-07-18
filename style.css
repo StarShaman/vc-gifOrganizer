@@ -39,18 +39,14 @@
 
 /* --- bookmarks sidebar (appears once at least one category is bookmarked) --- */
 
-.vc-gifo-has-sidebar {
-    position: relative;
-}
-
-.vc-gifo-has-sidebar > *:not(.vc-gifo-sidebar) {
-    margin-left: 44px;
-    width: calc(100% - 44px);
+/* applied to the gif tab panel; the bar itself lives on the panel's parent */
+.vc-gifo-squeeze {
+    margin-left: 44px !important;
+    width: calc(100% - 44px) !important;
 }
 
 .vc-gifo-sidebar {
     position: absolute;
-    top: 0;
     bottom: 0;
     left: 0;
     z-index: 5;
@@ -73,13 +69,12 @@
     width: 36px;
     height: 36px;
     border-radius: 8px;
-    color: var(--interactive-normal);
+    color: #fff;
     cursor: pointer;
 }
 
 .vc-gifo-bm:hover {
     background: var(--background-modifier-hover);
-    color: var(--interactive-hover);
 }
 
 .vc-gifo-bm-img {
@@ -97,6 +92,35 @@
 }
 
 /* icon picker modal */
+.vc-gifo-color-row {
+    display: flex;
+    gap: 6px;
+    align-items: center;
+    padding: 6px 0 2px;
+}
+
+.vc-gifo-swatch {
+    width: 22px;
+    height: 22px;
+    padding: 0;
+    border: 2px solid transparent;
+    border-radius: 50%;
+    cursor: pointer;
+}
+
+.vc-gifo-swatch-active {
+    border-color: var(--interactive-active, #fff);
+}
+
+.vc-gifo-color-input {
+    width: 26px;
+    height: 26px;
+    padding: 0;
+    border: none;
+    background: none;
+    cursor: pointer;
+}
+
 .vc-gifo-icon-grid {
     display: grid;
     grid-template-columns: repeat(4, 1fr);
