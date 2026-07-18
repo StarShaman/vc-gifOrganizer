@@ -293,6 +293,12 @@ function handlePickerVideo(el: Element) {
 const PANEL_ID = "gif-picker-tab-panel";
 
 function navigateToCategory(name: string) {
+    try {
+        // leave the Favorites view if we're in it - its resultType overrides queries
+        (uiRefs.pickerRoot as any)?.setState?.({ resultType: null });
+    } catch (err) {
+        logger.error("navigateToCategory setState failed", err);
+    }
     FluxDispatcher.dispatch({ type: "GIF_PICKER_QUERY", query: prefix() + name });
 }
 
