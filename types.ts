@@ -29,6 +29,8 @@ export interface StoredCategory {
     src: string;
     format: Format;
     gifs: StoredGif[];
+    /** present when the category is pinned to the picker sidebar; icon is "builtin:<name>" or an image URL/data-URL */
+    bookmark?: { icon: string; };
     createdAt: number;
     lastUpdated: number;
 }

@@ -9,8 +9,9 @@ import { ConfirmModal, ContextMenuApi, Menu, Modal, openModal, TextInput, useSta
 
 import { settings } from "./settings";
 import {
-    addGifToCategory, categoriesContaining, createCategory, deleteCategory,
-    GifInput, removeGifFromCategory, renameCategory, sortedCategories
+    addGifToCategory, BUILTIN_ICONS, categoriesContaining, createCategory, deleteCategory,
+    findCategory, GifInput, removeBookmark, removeGifFromCategory, renameCategory,
+    setBookmark, sortedCategories
 } from "./store";
 import { TileInstance } from "./types";
 
@@ -73,10 +74,25 @@ export function GifMenu({ gif, instance }: { gif: GifInput; instance?: TileInsta
     );
 }
 
-/** Menu for one of our category cards: rename / delete */
+/** Menu for one of our category cards: bookmark / rename / delete */
 export function CategoryMenu({ name }: { name: string; }) {
+    const bookmarked = !!findCategory(name)?.bookmark;
+
     return (
         <Menu.Menu navId="vc-gifo-category-menu" onClose={closeMenu} aria-label="Manage category">
+            <Menu.MenuItem
+                id="vc-gifo-bookmark"
+                label={bookmarked ? "Change bookmark icon" : "Bookmark category"}
+                action={() => openBookmarkIconModal(name)}
+            />
+            {bookmarked && (
+                <Menu.MenuItem
+                    id="vc-gifo-unbookmark"
+                    label="Remove bookmark"
+                    action={() => { removeBookmark(name); }}
+                />
+            )}
+            <Menu.MenuSeparator />
             <Menu.MenuItem
                 id="vc-gifo-rename"
                 label="Rename category"
@@ -168,6 +184,61 @@ export function openNewCategoryModal(gif?: GifInput, onDone?: () => void) {
             }}
         />
     ));
+}
+
+function BookmarkIconModal({ rootProps, name }: { rootProps: RenderModalProps; name: string; }) {
+    const pick = (icon: string) => {
+        setBookmark(name, icon);
+        rootProps.onClose();
+    };
+
+    const upload = () => {
+        const input = document.createElement("input");
+        input.type = "file";
+        input.accept = "image/*";
+        input.onchange = () => {
+            const file = input.files?.[0];
+            if (!file) return;
+            const reader = new FileReader();
+            reader.onload = () => {
+                if (typeof reader.result === "string") pick(reader.result);
+            };
+            reader.readAsDataURL(file);
+        };
+        input.click();
+    };
+
+    return (
+        <Modal
+            {...rootProps}
+            size="sm"
+            title="Bookmark icon"
+            subtitle={`Pick an icon for "${name}"`}
+            actions={[
+                { text: "Upload image…", variant: "primary", onClick: upload },
+                { text: "Cancel", variant: "secondary", onClick: rootProps.onClose }
+            ]}
+        >
+            <div className="vc-gifo-icon-grid">
+                {Object.entries(BUILTIN_ICONS).map(([key, path]) => (
+                    <button
+                        key={key}
+                        className="vc-gifo-icon-choice"
+                        aria-label={key}
+                        onClick={() => pick("builtin:" + key)}
+                    >
+                        <svg width="24" height="24" viewBox="0 0 24 24">
+                            <path fill="currentColor" d={path} />
+                        </svg>
+                    </button>
+                ))}
+            </div>
+        </Modal>
+    );
+}
+
+export function openBookmarkIconModal(name: string) {
+    openModal(props => <BookmarkIconModal rootProps={props} name={name} />);
 }
 
 export function openRenameCategoryModal(oldName: string) {

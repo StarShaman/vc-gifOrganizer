@@ -98,6 +98,7 @@ export default definePlugin({
     stop() {
         stopChatButtons();
         uiRefs.categoriesPage = null;
+        uiRefs.pickerRoot = null;
         uiRefs.lastCategoryQuery = null;
         oldTrendingCategories = null;
     },
@@ -138,6 +139,7 @@ export default definePlugin({
 
     renderContent(instance: ResultsPageInstance) {
         try {
+            uiRefs.pickerRoot = instance;
             const { query } = instance.props;
             if (!query?.startsWith(prefix())) {
                 uiRefs.lastCategoryQuery = null;

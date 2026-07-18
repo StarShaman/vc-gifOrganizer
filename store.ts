@@ -21,8 +21,24 @@ export let categories: StoredCategory[] = [];
 /** Live references into the picker so we can refresh it after changes */
 export const uiRefs = {
     categoriesPage: null as CategoriesPageInstance | null,
+    /** the picker's results component (holds state.resultType) - used to open Favorites */
+    pickerRoot: null as unknown,
     /** full query (with prefix) of the category view currently open, if any */
-    lastCategoryQuery: null as string | null
+    lastCategoryQuery: null as string | null,
+    /** set by chat.tsx; rebuilds the bookmarks sidebar after data changes */
+    refreshSidebar: null as (() => void) | null
+};
+
+/** Built-in bookmark icons (24x24 single paths, fill = currentColor) */
+export const BUILTIN_ICONS: Record<string, string> = {
+    star: "M12 2l2.9 6.26 6.6.56-5 4.36 1.5 6.45L12 16.9 5.99 19.63l1.5-6.45-5-4.36 6.6-.56L12 2z",
+    heart: "M12 21.35l-1.45-1.32C5.4 15.36 2 12.28 2 8.5 2 5.42 4.42 3 7.5 3c1.74 0 3.41.81 4.5 2.09C13.09 3.81 14.76 3 16.5 3 19.58 3 22 5.42 22 8.5c0 3.78-3.4 6.86-8.55 11.54L12 21.35z",
+    flame: "M12 2c1 3-1 4.5-1 7 0 1 .8 2 2 2s2-1 2-2.3C16.5 10 18 12 18 14.5A6 6 0 0 1 6 14.5C6 9 12 8 12 2Z",
+    bolt: "M13 2 4.09 12.35a.5.5 0 0 0 .38.82H11l-1 8.83 8.91-10.35a.5.5 0 0 0-.38-.82H13L13 2Z",
+    folder: "M2 5a2 2 0 0 1 2-2h4.59a2 2 0 0 1 1.41.59L11.41 5H20a2 2 0 0 1 2 2v11a2 2 0 0 1-2 2H4a2 2 0 0 1-2-2V5Z",
+    paw: "M12 12.5c2.5 0 5.5 2 5.5 4.5 0 1.7-1.3 3-3 3-1 0-1.7-.5-2.5-.5s-1.5.5-2.5.5c-1.7 0-3-1.3-3-3 0-2.5 3-4.5 5.5-4.5ZM5 8a2 2 0 1 1 0 4 2 2 0 0 1 0-4Zm14 0a2 2 0 1 1 0 4 2 2 0 0 1 0-4ZM9 3.5a2 2 0 1 1 0 4 2 2 0 0 1 0-4Zm6 0a2 2 0 1 1 0 4 2 2 0 0 1 0-4Z",
+    note: "M9 3v10.55A4 4 0 1 0 11 17V7h8V3H9Z",
+    ghost: "M12 2a8 8 0 0 0-8 8v11l3-2 2.5 2 2.5-2 2.5 2 2.5-2 3 2V10a8 8 0 0 0-8-8Zm-3 7a1.5 1.5 0 1 1 0 3 1.5 1.5 0 0 1 0-3Zm6 0a1.5 1.5 0 1 1 0 3 1.5 1.5 0 0 1 0-3Z"
 };
 
 const VIDEO_EXTENSIONS = ["mp4", "ogg", "webm", "avi", "wmv", "flv", "mov", "mkv", "m4v"];
@@ -53,6 +69,7 @@ function toast(message: string, success = false) {
 /** Re-render the front page cards and, if a category view is open, re-run its query */
 export function refreshUI(deletedName?: string) {
     uiRefs.categoriesPage?.forceUpdate();
+    uiRefs.refreshSidebar?.();
 
     const q = uiRefs.lastCategoryQuery;
     if (!q) return;
@@ -217,6 +234,23 @@ export async function renameCategory(oldName: string, newName: string): Promise<
     if (wasViewing) uiRefs.lastCategoryQuery = prefix() + newName;
     await save();
     return null;
+}
+
+export async function setBookmark(name: string, icon: string) {
+    const cat = findCategory(name);
+    if (!cat) return;
+    cat.bookmark = { icon };
+    cat.lastUpdated = Date.now();
+    await save();
+    toast(`Bookmarked "${name}"`, true);
+}
+
+export async function removeBookmark(name: string) {
+    const cat = findCategory(name);
+    if (!cat?.bookmark) return;
+    delete cat.bookmark;
+    await save();
+    toast(`Removed bookmark for "${name}"`, true);
 }
 
 export async function deleteCategory(name: string) {

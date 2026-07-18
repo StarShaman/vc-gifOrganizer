@@ -37,6 +37,92 @@
     background: rgb(0 0 0 / 85%);
 }
 
+/* --- bookmarks sidebar (appears once at least one category is bookmarked) --- */
+
+.vc-gifo-has-sidebar {
+    position: relative;
+}
+
+.vc-gifo-has-sidebar > *:not(.vc-gifo-sidebar) {
+    margin-left: 44px;
+    width: calc(100% - 44px);
+}
+
+.vc-gifo-sidebar {
+    position: absolute;
+    top: 0;
+    bottom: 0;
+    left: 0;
+    z-index: 5;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 6px;
+    width: 44px;
+    padding: 8px 0;
+    overflow: hidden auto;
+    scrollbar-width: none;
+    background: var(--background-base-low, var(--background-secondary));
+}
+
+.vc-gifo-bm {
+    display: flex;
+    flex: 0 0 auto;
+    align-items: center;
+    justify-content: center;
+    width: 36px;
+    height: 36px;
+    border-radius: 8px;
+    color: var(--interactive-normal);
+    cursor: pointer;
+}
+
+.vc-gifo-bm:hover {
+    background: var(--background-modifier-hover);
+    color: var(--interactive-hover);
+}
+
+.vc-gifo-bm-img {
+    width: 24px;
+    height: 24px;
+    border-radius: 6px;
+    object-fit: cover;
+}
+
+.vc-gifo-bm-sep {
+    flex: 0 0 auto;
+    width: 24px;
+    height: 1px;
+    background: var(--background-modifier-accent);
+}
+
+/* icon picker modal */
+.vc-gifo-icon-grid {
+    display: grid;
+    grid-template-columns: repeat(4, 1fr);
+    gap: 8px;
+    justify-items: center;
+    padding: 8px 0;
+}
+
+.vc-gifo-icon-choice {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    width: 48px;
+    height: 48px;
+    border: none;
+    border-radius: 8px;
+    background: var(--background-secondary, rgb(0 0 0 / 20%));
+    color: var(--interactive-normal);
+    cursor: pointer;
+}
+
+.vc-gifo-icon-choice:hover {
+    background: var(--background-modifier-hover);
+    color: var(--interactive-hover);
+}
+
 /* "VIDEO" tag on stored videos in category views (bottom-right like a
    duration chip - the favorite star occupies the top-right corner there) */
 .vc-gifo-badge {

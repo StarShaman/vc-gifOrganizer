@@ -6,11 +6,11 @@
 
 import { findGroupChildrenByChildId, NavContextMenuPatchCallback } from "@api/ContextMenu";
 import { Embed, Message } from "@vencord/discord-types";
-import { ContextMenuApi, Menu, MessageStore } from "@webpack/common";
+import { ContextMenuApi, FluxDispatcher, Menu, MessageStore } from "@webpack/common";
 
 import { GifMenu, gifMenuItems } from "./components";
 import { prefix, settings } from "./settings";
-import { findCategory, GifInput, inferKind, logger, uiRefs } from "./store";
+import { BUILTIN_ICONS, findCategory, GifInput, inferKind, logger, sortedCategories, uiRefs } from "./store";
 import { Format } from "./types";
 
 const BTN_ATTR = "data-vc-gifo";
@@ -288,6 +288,96 @@ function handlePickerVideo(el: Element) {
     }
 }
 
+/* ------------------------------ bookmarks sidebar ------------------------------ */
+
+const PANEL_ID = "gif-picker-tab-panel";
+
+function navigateToCategory(name: string) {
+    FluxDispatcher.dispatch({ type: "GIF_PICKER_QUERY", query: prefix() + name });
+}
+
+function openFavoritesView() {
+    try {
+        FluxDispatcher.dispatch({ type: "GIF_PICKER_QUERY", query: "" });
+        (uiRefs.pickerRoot as any)?.setState?.({ resultType: "Favorites" });
+    } catch (err) {
+        logger.error("openFavoritesView failed", err);
+    }
+}
+
+function bookmarkIconNode(icon: string): HTMLElement {
+    if (icon.startsWith("builtin:")) {
+        const path = BUILTIN_ICONS[icon.slice("builtin:".length)];
+        if (path) {
+            const holder = document.createElement("div");
+            holder.innerHTML = `<svg width="22" height="22" viewBox="0 0 24 24"><path fill="currentColor" d="${path}"/></svg>`;
+            return holder.firstElementChild as unknown as HTMLElement;
+        }
+    }
+    const img = document.createElement("img");
+    img.className = "vc-gifo-bm-img";
+    img.src = icon;
+    img.alt = "";
+    return img;
+}
+
+function makeSidebarButton(title: string, icon: HTMLElement, onClick: () => void): HTMLElement {
+    const btn = document.createElement("div");
+    btn.className = "vc-gifo-bm";
+    btn.title = title;
+    btn.setAttribute("role", "button");
+    btn.appendChild(icon);
+    btn.addEventListener("click", e => {
+        e.preventDefault();
+        e.stopPropagation();
+        onClick();
+    });
+    return btn;
+}
+
+/** Build/refresh the sidebar inside the GIF tab panel. Shown once >=1 bookmark exists. */
+function buildSidebar(panel: HTMLElement) {
+    try {
+        const bookmarked = sortedCategories().filter(c => c.bookmark);
+        let bar = panel.querySelector(":scope > .vc-gifo-sidebar") as HTMLElement | null;
+
+        if (!bookmarked.length) {
+            bar?.remove();
+            panel.classList.remove("vc-gifo-has-sidebar");
+            return;
+        }
+
+        if (!bar) {
+            bar = document.createElement("div");
+            bar.className = "vc-gifo-sidebar";
+            panel.appendChild(bar);
+        }
+        panel.classList.add("vc-gifo-has-sidebar");
+        bar.innerHTML = "";
+
+        bar.appendChild(makeSidebarButton(
+            "Favorites",
+            bookmarkIconNode("builtin:star"),
+            openFavoritesView
+        ));
+
+        const sep = document.createElement("div");
+        sep.className = "vc-gifo-bm-sep";
+        bar.appendChild(sep);
+
+        for (const cat of bookmarked) {
+            const { name } = cat;
+            bar.appendChild(makeSidebarButton(
+                name,
+                bookmarkIconNode(cat.bookmark!.icon),
+                () => navigateToCategory(name)
+            ));
+        }
+    } catch (err) {
+        logger.error("buildSidebar failed", err);
+    }
+}
+
 let observer: MutationObserver | null = null;
 let pending: Set<HTMLElement> | null = null;
 let flushTimer: ReturnType<typeof setTimeout> | null = null;
@@ -297,6 +387,8 @@ function scan(root: HTMLElement) {
     root.querySelectorAll?.('[class*="gifFavoriteButton"]').forEach(el => handleStar(el as HTMLElement));
     if (root.matches?.("video")) { handleVideo(root); handlePickerVideo(root); }
     root.querySelectorAll?.("video").forEach(el => { handleVideo(el); handlePickerVideo(el); });
+    const panel = root.matches?.("#" + PANEL_ID) ? root : root.querySelector?.("#" + PANEL_ID);
+    if (panel) buildSidebar(panel as HTMLElement);
 }
 
 function flush() {
@@ -313,6 +405,10 @@ function flush() {
 
 export function startChatButtons() {
     if (observer) return;
+    uiRefs.refreshSidebar = () => {
+        const panel = document.getElementById(PANEL_ID);
+        if (panel) buildSidebar(panel);
+    };
     scan(document.body);
     observer = new MutationObserver(mutations => {
         for (const m of mutations) {
@@ -332,7 +428,9 @@ export function stopChatButtons() {
     if (flushTimer != null) clearTimeout(flushTimer);
     flushTimer = null;
     pending = null;
-    document.querySelectorAll(`[${BTN_ATTR}], .vc-gifo-badge`).forEach(el => el.remove());
+    uiRefs.refreshSidebar = null;
+    document.querySelectorAll(`[${BTN_ATTR}], .vc-gifo-badge, .vc-gifo-sidebar`).forEach(el => el.remove());
+    document.querySelectorAll(".vc-gifo-has-sidebar").forEach(el => el.classList.remove("vc-gifo-has-sidebar"));
 }
 
 /* ----------------------------- message context menu ----------------------------- */

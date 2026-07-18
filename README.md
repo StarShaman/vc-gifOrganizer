@@ -6,7 +6,8 @@ A [Vencord](https://vencord.dev) userplugin that sorts your favorite GIFs into c
 
 - **Category cards** at the top of the GIF picker, before Discord's trending categories — click one to see only that category's GIFs.
 - **Folder button on every GIF**, in the picker and directly in chat next to Discord's favorite star — click it to file the GIF into a category or create a new one.
-- **Right-click menus** everywhere: GIFs get add/remove options, your category cards get rename/delete, and GIFs in chat get a "GIF categories" submenu.
+- **Right-click menus** everywhere: GIFs get add/remove options, your category cards get bookmark/rename/delete, and GIFs in chat get a "GIF categories" submenu.
+- **Bookmarks sidebar**: right-click a category card → *Bookmark category* → pick a built-in icon or upload your own. Bookmarked categories appear in a sidebar on the picker's left edge (with a Favorites shortcut on top) for one-click jumps. Deleting a category removes its bookmark.
 - Categories are stored locally via Vencord's DataStore. Deleting a category never deletes GIFs — it's just a grouping.
 
 ## Quick setup
