@@ -299,6 +299,9 @@ function navigateToCategory(name: string) {
     } catch (err) {
         logger.error("navigateToCategory setState failed", err);
     }
+    // reset the query first: jumping query->query directly desyncs the picker's
+    // header state (the back arrow vanishes). Same pattern refreshUI uses.
+    FluxDispatcher.dispatch({ type: "GIF_PICKER_QUERY", query: "" });
     FluxDispatcher.dispatch({ type: "GIF_PICKER_QUERY", query: prefix() + name });
 }
 
