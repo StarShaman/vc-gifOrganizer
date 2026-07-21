@@ -49,12 +49,35 @@ export function getFormat(url: string): Format {
 }
 
 export async function initStore() {
-    categories = (await DataStore.get<StoredCategory[]>(DATA_KEY)) ?? [];
+    try {
+        categories = (await DataStore.get<StoredCategory[]>(DATA_KEY)) ?? [];
+    } catch (err) {
+        // don't let a read failure abort the whole plugin start silently -
+        // fall back to an empty list and surface the problem instead
+        logger.error("Failed to load categories from DataStore", err);
+        categories = [];
+    }
 }
 
-async function save() {
-    await DataStore.set(DATA_KEY, categories);
+const SAVE_ERROR = "Couldn't save your categories - the last change was reverted";
+
+/**
+ * Persist the current categories. On failure, restore the pre-change snapshot
+ * so the in-memory state can't silently diverge from what's stored, log the
+ * error, and tell the user. Never rejects; returns whether the write succeeded.
+ */
+async function save(rollback: StoredCategory[]): Promise<boolean> {
+    try {
+        await DataStore.set(DATA_KEY, categories);
+    } catch (err) {
+        logger.error("Failed to persist categories", err);
+        categories = rollback;
+        toast(SAVE_ERROR);
+        refreshUI();
+        return false;
+    }
     refreshUI();
+    return true;
 }
 
 function toast(message: string, success = false) {
@@ -169,6 +192,7 @@ export async function createCategory(name: string, gif?: GifInput): Promise<stri
         if (existing) return `Exclusive mode: this item is already in "${existing.name}"`;
     }
 
+    const snapshot = structuredClone(categories);
     const gifs = gif ? [makeStoredGif(gif)] : [];
     const cat: StoredCategory = {
         name,
@@ -180,7 +204,7 @@ export async function createCategory(name: string, gif?: GifInput): Promise<stri
     };
     updateThumb(cat);
     categories.push(cat);
-    await save();
+    if (!await save(snapshot)) return SAVE_ERROR;
     toast(gif ? `Created "${name}" and added the GIF` : `Created "${name}"`, true);
     return null;
 }
@@ -202,9 +226,10 @@ export async function addGifToCategory(name: string, gif: GifInput) {
         }
     }
 
+    const snapshot = structuredClone(categories);
     cat.gifs.push(makeStoredGif(gif));
     updateThumb(cat);
-    await save();
+    if (!await save(snapshot)) return;
     toast(`Added to "${name}"`, true);
 }
 
@@ -212,9 +237,10 @@ export async function removeGifFromCategory(name: string, url: string) {
     const cat = findCategory(name);
     if (!cat) return;
 
+    const snapshot = structuredClone(categories);
     cat.gifs = cat.gifs.filter(g => g.url !== url);
     updateThumb(cat);
-    await save();
+    if (!await save(snapshot)) return;
     toast(`Removed from "${name}"`, true);
 }
 
@@ -228,34 +254,46 @@ export async function renameCategory(oldName: string, newName: string): Promise<
     const cat = findCategory(oldName);
     if (!cat) return "Category not found";
 
+    const snapshot = structuredClone(categories);
     const wasViewing = uiRefs.lastCategoryQuery === prefix() + oldName;
     cat.name = newName;
     cat.lastUpdated = Date.now();
+    if (!await save(snapshot)) return SAVE_ERROR;
     if (wasViewing) uiRefs.lastCategoryQuery = prefix() + newName;
-    await save();
     return null;
 }
 
 export async function setBookmark(name: string, icon: string, color?: string) {
     const cat = findCategory(name);
     if (!cat) return;
+    const snapshot = structuredClone(categories);
     cat.bookmark = color ? { icon, color } : { icon };
     cat.lastUpdated = Date.now();
-    await save();
+    if (!await save(snapshot)) return;
     toast(`Bookmarked "${name}"`, true);
 }
 
 export async function removeBookmark(name: string) {
     const cat = findCategory(name);
     if (!cat?.bookmark) return;
+    const snapshot = structuredClone(categories);
     delete cat.bookmark;
-    await save();
+    if (!await save(snapshot)) return;
     toast(`Removed bookmark for "${name}"`, true);
 }
 
 export async function deleteCategory(name: string) {
+    const snapshot = categories;
     categories = categories.filter(c => c.name !== name);
-    await DataStore.set(DATA_KEY, categories);
+    try {
+        await DataStore.set(DATA_KEY, categories);
+    } catch (err) {
+        logger.error("Failed to delete category", err);
+        categories = snapshot;
+        toast(SAVE_ERROR);
+        refreshUI();
+        return;
+    }
     refreshUI(name);
     toast(`Deleted "${name}"`, true);
 }
