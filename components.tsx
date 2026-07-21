@@ -10,7 +10,7 @@ import { ConfirmModal, ContextMenuApi, Menu, Modal, openModal, TextInput, useSta
 import { settings } from "./settings";
 import {
     addGifToCategory, BUILTIN_ICONS, categoriesContaining, createCategory, deleteCategory,
-    findCategory, GifInput, removeBookmark, removeGifFromCategory, renameCategory,
+    findCategory, GifInput, logger, removeBookmark, removeGifFromCategory, renameCategory,
     setBookmark, sortedCategories
 } from "./store";
 import { TileInstance } from "./types";
@@ -208,6 +208,7 @@ function BookmarkIconModal({ rootProps, name }: { rootProps: RenderModalProps; n
             reader.onload = () => {
                 if (typeof reader.result === "string") pick(reader.result);
             };
+            reader.onerror = () => logger.error("Failed to read bookmark image", reader.error);
             reader.readAsDataURL(file);
         };
         input.click();
