@@ -1,0 +1,25 @@
+{
+    "compilerOptions": {
+        "target": "ES2020",
+        "module": "ESNext",
+        "moduleResolution": "Bundler",
+        "lib": ["ES2021", "DOM", "DOM.Iterable"],
+        "jsx": "react-jsx",
+        "strict": true,
+        "esModuleInterop": true,
+        "skipLibCheck": true,
+        "resolveJsonModule": true,
+        "types": ["node", "vitest/globals"],
+        "baseUrl": ".",
+        "paths": {
+            "@api/index": ["tests/vencord-mocks/api-index.ts"],
+            "@api/Settings": ["tests/vencord-mocks/api-settings.ts"],
+            "@api/ContextMenu": ["tests/vencord-mocks/api-contextmenu.ts"],
+            "@utils/Logger": ["tests/vencord-mocks/utils-logger.ts"],
+            "@utils/types": ["tests/vencord-mocks/utils-types.ts"],
+            "@webpack/common": ["tests/vencord-mocks/webpack-common.ts"],
+            "@vencord/discord-types": ["tests/vencord-mocks/discord-types.ts"]
+        }
+    },
+    "include": ["tests", "*.ts", "*.tsx"]
+}
