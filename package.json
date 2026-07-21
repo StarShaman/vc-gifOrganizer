@@ -1,0 +1,24 @@
+{
+    "name": "vc-giforganizer",
+    "version": "1.0.0",
+    "private": true,
+    "description": "Vencord GifOrganizer userplugin - test tooling",
+    "license": "GPL-3.0-or-later",
+    "type": "module",
+    "scripts": {
+        "test": "vitest run",
+        "test:watch": "vitest",
+        "coverage": "vitest run --coverage"
+    },
+    "devDependencies": {
+        "@testing-library/react": "^16.1.0",
+        "@types/node": "^20.19.0",
+        "@types/react": "^18.3.12",
+        "@vitest/coverage-v8": "^2.1.8",
+        "jsdom": "^25.0.1",
+        "react": "^18.3.1",
+        "react-dom": "^18.3.1",
+        "typescript": "^5.7.2",
+        "vitest": "^2.1.8"
+    }
+}
