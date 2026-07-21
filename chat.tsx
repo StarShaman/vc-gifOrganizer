@@ -6,12 +6,13 @@
 
 import { findGroupChildrenByChildId, NavContextMenuPatchCallback } from "@api/ContextMenu";
 import { Embed, Message } from "@vencord/discord-types";
-import { ContextMenuApi, FluxDispatcher, Menu, MessageStore } from "@webpack/common";
+import { ContextMenuApi, Menu, MessageStore } from "@webpack/common";
 
 import { GifMenu, gifMenuItems } from "./components";
 import { prefix, settings } from "./settings";
 import { BUILTIN_ICONS, findCategory, GifInput, inferKind, logger, sortedCategories, uiRefs } from "./store";
 import { Format } from "./types";
+import { dispatchPickerQuery, ensureRelative, isGifProvider } from "./utils";
 
 const BTN_ATTR = "data-vc-gifo";
 
@@ -43,8 +44,7 @@ function coerceFormat(format: unknown): Format | undefined {
 /** Tenor/Giphy/gifv embeds are GIFs that happen to be mp4s - always treated as GIFs */
 function isGifLikeEmbed(e: Embed | undefined | null): boolean {
     if (!e) return false;
-    return (e as any).type === "gifv"
-        || ["tenor", "giphy", "klipy", "gfycat"].includes(e.provider?.name?.toLowerCase?.() ?? "");
+    return (e as any).type === "gifv" || isGifProvider(e.provider?.name);
 }
 
 function openGifMenu(e: MouseEvent, gif: GifInput, target: HTMLElement) {
@@ -59,6 +59,16 @@ function openGifMenu(e: MouseEvent, gif: GifInput, target: HTMLElement) {
         currentTarget: target,
         nativeEvent: e
     } as any, () => <GifMenu gif={gif} />);
+}
+
+/** Wire our folder button so a click opens the gif menu without triggering the underlying tile */
+function attachMenuButton(btn: HTMLElement, gif: GifInput) {
+    btn.addEventListener("mousedown", e => { e.preventDefault(); e.stopPropagation(); });
+    btn.addEventListener("click", e => {
+        e.preventDefault();
+        e.stopPropagation();
+        openGifMenu(e, gif, btn);
+    });
 }
 
 /* ---------------------------- on-gif overlay button ---------------------------- */
@@ -130,12 +140,7 @@ function handleStar(star: HTMLElement) {
     if (svg) svg.innerHTML = FOLDER_PATHS;
     else btn.innerHTML = FOLDER_SVG;
 
-    btn.addEventListener("mousedown", e => { e.preventDefault(); e.stopPropagation(); });
-    btn.addEventListener("click", e => {
-        e.preventDefault();
-        e.stopPropagation();
-        openGifMenu(e, gif, btn);
-    });
+    attachMenuButton(btn, gif);
 
     // if the star is corner-positioned (rather than a flex-row item), shift the
     // clone beside it on whichever side has room - same box metrics, so exact.
@@ -213,8 +218,7 @@ function handleVideo(el: Element) {
         }
         if (!gif) return;
 
-        if (getComputedStyle(wrapper).position === "static")
-            wrapper.style.position = "relative";
+        ensureRelative(wrapper);
 
         const btn = document.createElement("div");
         btn.className = "vc-gifo-video-btn";
@@ -223,13 +227,7 @@ function handleVideo(el: Element) {
         btn.setAttribute("aria-label", "Add video to category");
         btn.innerHTML = FOLDER_SVG;
 
-        const g = gif;
-        btn.addEventListener("mousedown", e => { e.preventDefault(); e.stopPropagation(); });
-        btn.addEventListener("click", e => {
-            e.preventDefault();
-            e.stopPropagation();
-            openGifMenu(e, g, btn);
-        });
+        attachMenuButton(btn, gif);
 
         wrapper.appendChild(btn);
     } catch (err) {
@@ -261,8 +259,7 @@ function handlePickerVideo(el: Element) {
         const parent = el.parentElement;
         if (!parent || parent.querySelector(":scope > .vc-gifo-badge")) return;
 
-        if (getComputedStyle(parent).position === "static")
-            parent.style.position = "relative";
+        ensureRelative(parent);
 
         const badge = document.createElement("div");
         badge.className = "vc-gifo-badge";
@@ -308,15 +305,15 @@ function navigateToCategory(name: string) {
     // The picker must actually RENDER the home state once before a new query,
     // or its results header (back arrow) desyncs - a synchronous ""+query batch
     // collapses that render away. One animation frame is the minimum gap.
-    FluxDispatcher.dispatch({ type: "GIF_PICKER_QUERY", query: "" });
+    dispatchPickerQuery("");
     requestAnimationFrame(() => requestAnimationFrame(() => {
-        FluxDispatcher.dispatch({ type: "GIF_PICKER_QUERY", query: target });
+        dispatchPickerQuery(target);
     }));
 }
 
 function openFavoritesView() {
     try {
-        FluxDispatcher.dispatch({ type: "GIF_PICKER_QUERY", query: "" });
+        dispatchPickerQuery("");
         (uiRefs.pickerRoot as any)?.setState?.({ resultType: "Favorites" });
     } catch (err) {
         logger.error("openFavoritesView failed", err);
@@ -373,8 +370,7 @@ function buildSidebar(panel: HTMLElement) {
             return;
         }
 
-        if (getComputedStyle(host).position === "static")
-            host.style.position = "relative";
+        ensureRelative(host);
 
         if (!bar) {
             bar = document.createElement("div");

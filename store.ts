@@ -6,10 +6,11 @@
 
 import { DataStore } from "@api/index";
 import { Logger } from "@utils/Logger";
-import { FluxDispatcher, Toasts } from "@webpack/common";
+import { Toasts } from "@webpack/common";
 
 import { prefix, settings } from "./settings";
 import { CategoriesPageInstance, Format, StoredCategory, StoredGif } from "./types";
+import { dispatchPickerQuery, GIF_HOST_RE } from "./utils";
 
 export const logger = new Logger("GifOrganizer");
 
@@ -76,13 +77,13 @@ export function refreshUI(deletedName?: string) {
 
     if (deletedName != null && q === prefix() + deletedName) {
         uiRefs.lastCategoryQuery = null;
-        FluxDispatcher.dispatch({ type: "GIF_PICKER_QUERY", query: "" });
+        dispatchPickerQuery("");
         return;
     }
 
     // re-dispatch the open category query so its grid refreshes
-    FluxDispatcher.dispatch({ type: "GIF_PICKER_QUERY", query: "" });
-    FluxDispatcher.dispatch({ type: "GIF_PICKER_QUERY", query: q });
+    dispatchPickerQuery("");
+    dispatchPickerQuery(q);
 }
 
 export function findCategory(name: string) {
@@ -111,11 +112,9 @@ export function categoriesContaining(url: string): StoredCategory[] {
  * images-ext-X.discordapp.net/external/.../media.tenor.com/... (the original
  * host survives in the path). This also overrides items mis-tagged earlier.
  */
-const GIF_HOSTS = /(^|[./])(tenor|giphy|klipy|gfycat)\.(com|co)([/:?]|$)/i;
-
 export function inferKind(g: StoredGif): "gif" | "video" {
     if ((g.format ?? getFormat(g.src)) !== Format.VIDEO) return "gif";
-    if (GIF_HOSTS.test(g.src) || GIF_HOSTS.test(g.url)) return "gif";
+    if (GIF_HOST_RE.test(g.src) || GIF_HOST_RE.test(g.url)) return "gif";
     return g.kind ?? "video";
 }
 
